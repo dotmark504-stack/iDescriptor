@@ -27,6 +27,11 @@
 #include "libirecovery.h"
 #endif
 #include "ztabwidget.h"
+#ifdef __linux__
+#include "core/services/avahi/avahi_service.h"
+#else
+#include "core/services/dnssd/dnssd_service.h"
+#endif
 #include <QLabel>
 #include <QMainWindow>
 #include <QStackedWidget>
@@ -49,6 +54,8 @@ public:
     ZUpdater *m_updater = nullptr;
 public slots:
     void updateNoDevicesConnected();
+    void onNetworkDeviceAdded(const NetworkDevice &device);
+    void onNetworkDeviceRemoved(const QString &deviceIdentifier);
 
 private:
     void createMenus();
@@ -58,5 +65,10 @@ private:
     DeviceManagerWidget *m_deviceManager;
     QStackedWidget *m_mainStackedWidget;
     QLabel *m_connectedDeviceCountLabel;
+#ifdef __linux__
+    AvahiService *m_networkProvider = nullptr;
+#else
+    DnssdService *m_networkProvider = nullptr;
+#endif
 };
 #endif // MAINWINDOW_H

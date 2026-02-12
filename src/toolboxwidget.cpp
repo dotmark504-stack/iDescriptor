@@ -553,6 +553,15 @@ void ToolboxWidget::onToolboxClicked(iDescriptorTool tool, bool requiresDevice)
             m_networkDevicesWidget->setAttribute(Qt::WA_DeleteOnClose);
             m_networkDevicesWidget->setWindowFlag(Qt::Window);
             m_networkDevicesWidget->resize(500, 600);
+            connect(m_networkDevicesWidget, &NetworkDevicesWidget::connectDeviceRequested,
+                    this, [](const NetworkDevice &networkDevice) {
+                        if (networkDevice.udid.isEmpty()) {
+                            qWarning() << "Ignoring network connect request without UDID";
+                            return;
+                        }
+                        AppContext::sharedInstance()->addDevice(
+                            networkDevice.udid, static_cast<idevice_connection_type>(2), AddType::Regular);
+                    });
             connect(m_networkDevicesWidget, &QObject::destroyed, this,
                     [this]() { m_networkDevicesWidget = nullptr; });
             m_networkDevicesWidget->show();

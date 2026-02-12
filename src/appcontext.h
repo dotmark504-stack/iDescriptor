@@ -23,6 +23,7 @@
 #include "devicesidebarwidget.h"
 #include "iDescriptor.h"
 #include <QObject>
+#include <QTimer>
 
 class AppContext : public QObject
 {
@@ -49,6 +50,7 @@ private:
     QMap<uint64_t, iDescriptorRecoveryDevice *> m_recoveryDevices;
 #endif
     QStringList m_pendingDevices;
+    QMap<std::string, QTimer *> m_pendingNetworkRemovals;
     DeviceSelection m_currentSelection = DeviceSelection("");
 signals:
     void deviceAdded(iDescriptorDevice *device);
@@ -72,6 +74,9 @@ signals:
     */
     void deviceChange();
     void currentDeviceSelectionChanged(const DeviceSelection &selection);
+private:
+    void removeDeviceNow(const std::string &udid);
+
 public slots:
     void removeDevice(QString udid);
     void addDevice(QString udid, idevice_connection_type connType,

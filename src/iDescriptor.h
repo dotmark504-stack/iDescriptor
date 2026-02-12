@@ -425,6 +425,8 @@ afc_error_t afc2_client_new(idevice_t device, afc_client_t *afc);
 void get_cable_info(idevice_t device, plist_t &response);
 
 struct NetworkDevice {
+    QString udid;                           // stable device identifier
+    QString serviceIdentifier;              // DNS-SD/Avahi service instance key
     QString name;                           // service name
     QString hostname;                       // e.g., iPhone-2.local
     QString address;                        // IPv4 or IPv6 address
@@ -433,7 +435,16 @@ struct NetworkDevice {
 
     bool operator==(const NetworkDevice &other) const
     {
-        return name == other.name && address == other.address;
+        if (!udid.isEmpty() && !other.udid.isEmpty()) {
+            return udid == other.udid;
+        }
+
+        if (!serviceIdentifier.isEmpty() && !other.serviceIdentifier.isEmpty()) {
+            return serviceIdentifier == other.serviceIdentifier;
+        }
+
+        return name == other.name && address == other.address &&
+               hostname == other.hostname && port == other.port;
     }
 };
 

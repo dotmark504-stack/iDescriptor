@@ -43,6 +43,19 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
                            AddType addType)
 {
     try {
+        const std::string udidStr = udid.toStdString();
+        if (m_pendingNetworkRemovals.contains(udidStr)) {
+            QTimer *pendingRemoval = m_pendingNetworkRemovals.take(udidStr);
+            pendingRemoval->stop();
+            pendingRemoval->deleteLater();
+        }
+
+        if (m_devices.contains(udidStr)) {
+            iDescriptorDevice *existing = m_devices[udidStr];
+            existing->conn_type = conn_type;
+            emit deviceChange();
+            return;
+        }
         iDescriptorInitDeviceResult initResult =
             init_idescriptor_device(udid.toStdString().c_str());
 
@@ -167,6 +180,34 @@ void AppContext::removeDevice(QString _udid)
     }
 
     iDescriptorDevice *device = m_devices[udid];
+    const bool isNetworkDevice = static_cast<int>(device->conn_type) == 2;
+    if (isNetworkDevice && !m_pendingNetworkRemovals.contains(udid)) {
+        QTimer *timer = new QTimer(this);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, this, [this, udid]() {
+            if (m_pendingNetworkRemovals.contains(udid)) {
+                QTimer *removalTimer = m_pendingNetworkRemovals.take(udid);
+                removalTimer->deleteLater();
+            }
+            removeDeviceNow(udid);
+        });
+        m_pendingNetworkRemovals[udid] = timer;
+        timer->start(5000);
+        qDebug() << "Scheduled delayed removal for network device"
+                 << QString::fromStdString(udid);
+        return;
+    }
+
+    removeDeviceNow(udid);
+}
+
+void AppContext::removeDeviceNow(const std::string &udid)
+{
+    if (!m_devices.contains(udid)) {
+        return;
+    }
+
+    iDescriptorDevice *device = m_devices[udid];
     m_devices.remove(udid);
 
     emit deviceRemoved(udid);
@@ -180,7 +221,7 @@ void AppContext::removeDevice(QString _udid)
         afc_client_free(device->afc2Client);
 
     idevice_free(device->device);
-    
+
     delete device;
 }
 
