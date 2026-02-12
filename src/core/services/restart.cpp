@@ -32,9 +32,12 @@ bool restart(std::string _udid)
     lockdownd_error_t ret = LOCKDOWN_E_UNKNOWN_ERROR;
     lockdownd_service_descriptor_t service = NULL;
     const char *udid = _udid.c_str();
-    int use_network = 0;
+    idevice_options lookupMode = IDEVICE_LOOKUP_USBMUX;
+#ifdef IDEVICE_LOOKUP_NETWORK
+    lookupMode = static_cast<idevice_options>(lookupMode | IDEVICE_LOOKUP_NETWORK);
+#endif
 
-    if (idevice_new_with_options(&device, udid, IDEVICE_LOOKUP_USBMUX) !=
+    if (idevice_new_with_options(&device, udid, lookupMode) !=
         IDEVICE_E_SUCCESS) {
         printf("ERROR: No device found, is it plugged in?\n");
         return false;

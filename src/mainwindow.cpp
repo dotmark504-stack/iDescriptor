@@ -58,12 +58,6 @@ void handleCallback(const idevice_event_t *event, void *userData)
 
     switch (event->event) {
     case IDEVICE_DEVICE_ADD: {
-        /* this should never happen iDescriptor does not support network devices
-        but for some reason even though we are only listening for USB devices,
-        we still get network devices on macOS*/
-        if (event->conn_type == CONNECTION_NETWORK) {
-            return;
-        }
         qDebug() << "Device added: " << QString::fromUtf8(event->udid);
 
         QMetaObject::invokeMethod(
@@ -82,12 +76,6 @@ void handleCallback(const idevice_event_t *event, void *userData)
     }
 
     case IDEVICE_DEVICE_PAIRED: {
-        if (event->conn_type == CONNECTION_NETWORK) {
-            qDebug()
-                << "Network devices are not supported but a network device was "
-                   "received in event listener. Please report this issue.";
-            return;
-        }
         qDebug() << "Device paired: " << QString::fromUtf8(event->udid);
 
         QMetaObject::invokeMethod(
