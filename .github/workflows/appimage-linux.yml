@@ -1,0 +1,40 @@
+name: Linux AppImage
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+
+jobs:
+  derive-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Derive build version
+        id: version
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            version="pr-${{ github.event.pull_request.number }}-${short_sha}"
+          else
+            sanitized_branch="${GITHUB_REF_NAME//\//-}"
+            version="${sanitized_branch}-${short_sha}"
+          fi
+
+          echo "Derived AppImage version: ${version}"
+          echo "value=${version}" >> "${GITHUB_OUTPUT}"
+
+  build-linux-appimage:
+    needs: derive-version
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      version: ${{ needs.derive-version.outputs.version }}
+    secrets: inherit
