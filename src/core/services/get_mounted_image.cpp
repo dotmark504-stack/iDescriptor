@@ -62,9 +62,13 @@ plist_t _get_mounted_image(const char *udid)
     size_t sig_length = 0;
     const char *imagetype = "Developer";
 
-    if (IDEVICE_E_SUCCESS != idevice_new_with_options(&device, udid,
+    idevice_options lookupMode = IDEVICE_LOOKUP_USBMUX;
+#ifdef IDEVICE_LOOKUP_NETWORK
+    lookupMode = static_cast<idevice_options>(lookupMode | IDEVICE_LOOKUP_NETWORK);
+#endif
 
-                                                      IDEVICE_LOOKUP_USBMUX)) {
+    if (IDEVICE_E_SUCCESS !=
+        idevice_new_with_options(&device, udid, lookupMode)) {
         qDebug() << "ERROR: Could not create idevice!";
         goto leave;
     }

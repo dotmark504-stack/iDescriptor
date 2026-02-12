@@ -354,8 +354,13 @@ iDescriptorInitDeviceResult init_idescriptor_device(const char *udid)
     afc_client_t afc2Client = nullptr;
     pugi::xml_document infoXml;
 
+    idevice_options lookupMode = IDEVICE_LOOKUP_USBMUX;
+#ifdef IDEVICE_LOOKUP_NETWORK
+    lookupMode = static_cast<idevice_options>(lookupMode | IDEVICE_LOOKUP_NETWORK);
+#endif
+
     idevice_error_t ret =
-        idevice_new_with_options(&device, udid, IDEVICE_LOOKUP_USBMUX);
+        idevice_new_with_options(&device, udid, lookupMode);
 
     if (ret != IDEVICE_E_SUCCESS) {
         qDebug() << "Failed to connect to device: " << ret;

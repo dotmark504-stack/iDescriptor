@@ -53,7 +53,8 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
             qDebug() << "Failed to initialize device with UDID: " << udid;
             if (initResult.error == LOCKDOWN_E_PASSWORD_PROTECTED) {
                 if (addType == AddType::Regular) {
-                    m_pendingDevices.append(udid);
+                    if (!m_pendingDevices.contains(udid))
+                        m_pendingDevices.append(udid);
                     emit devicePasswordProtected(udid);
                     emit deviceChange();
                     QTimer::singleShot(
@@ -72,7 +73,8 @@ void AppContext::addDevice(QString udid, idevice_connection_type conn_type,
             } else if (initResult.error ==
                            LOCKDOWN_E_PAIRING_DIALOG_RESPONSE_PENDING ||
                        initResult.error == LOCKDOWN_E_INVALID_HOST_ID) {
-                m_pendingDevices.append(udid);
+                if (!m_pendingDevices.contains(udid))
+                    m_pendingDevices.append(udid);
                 emit devicePairPending(udid);
                 emit deviceChange();
                 QTimer::singleShot(
@@ -138,10 +140,9 @@ int AppContext::getConnectedDeviceCount() const
 }
 
 /*
-    FIXME:
-    on macOS, sometimes you get wireless disconnects even though we are not
-    listening for wireless devices it does not have any to do with us, but it
-    still happens so be aware of that
+    NOTE:
+    removeDevice handles both USB and network-discovered devices. Transient
+    network disconnect events can still occur on some platforms.
 */
 void AppContext::removeDevice(QString _udid)
 {
