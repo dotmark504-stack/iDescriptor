@@ -1,0 +1,129 @@
+QScrollArea#transparentScrollArea {
+    background: transparent;
+    border: none;
+}
+
+QScrollArea#transparentScrollArea QWidget {
+    background: transparent;
+}
+
+QWidget#sectionHeader {
+    border-bottom: 1px solid @BORDER_SUBTLE;
+}
+
+QLabel[class="bodySecondary"] {
+    color: @TEXT_SECONDARY;
+}
+
+QLabel[class="headingLg"] {
+    font-size: 20px;
+    font-weight: 600;
+    color: @TEXT_PRIMARY;
+}
+
+QLabel[class="headingMd"] {
+    font-size: 16px;
+    font-weight: 600;
+    color: @TEXT_PRIMARY;
+}
+
+QLabel[class="caption"] {
+    font-size: 12px;
+    color: @TEXT_SECONDARY;
+}
+
+QPushButton[class="btnAccent"],
+QPushButton[class="btnSuccess"],
+QPushButton[class="btnSubtle"] {
+    border-radius: @CARD_RADIUS_SMALLpx;
+    padding: @SPACING_SMpx @SPACING_LGpx;
+    min-height: @BUTTON_HEIGHTpx;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+QPushButton[class="btnAccent"] {
+    color: @ACCENT_TEXT;
+    background: @ACCENT;
+    border: 1px solid transparent;
+}
+QPushButton[class="btnAccent"]:hover { background: @ACCENT_HOVER; }
+QPushButton[class="btnAccent"]:pressed { background: @ACCENT_PRESSED; }
+
+QPushButton[class="btnSuccess"] {
+    color: white;
+    background: @SUCCESS;
+    border: 1px solid transparent;
+}
+QPushButton[class="btnSuccess"]:hover { background: @SUCCESS_HOVER; }
+QPushButton[class="btnSuccess"]:pressed { background: @SUCCESS_PRESSED; }
+
+QPushButton[class="btnSubtle"] {
+    color: @TEXT_PRIMARY;
+    background: @SURFACE_ELEVATED;
+    border: 1px solid @BORDER_SUBTLE;
+}
+QPushButton[class="btnSubtle"]:hover { border-color: @BORDER_STRONG; }
+
+QWidget#appCard,
+QWidget#toolboxCard,
+QWidget#networkDeviceCard,
+QWidget#sponsorCard {
+    background: @SURFACE_ELEVATED;
+    border: 1px solid @BORDER_SUBTLE;
+    border-radius: @CARD_RADIUSpx;
+}
+
+QWidget#toolboxCard:disabled,
+QWidget#networkDeviceCard:disabled {
+    border-color: @BORDER_SUBTLE;
+    color: @TEXT_SECONDARY;
+}
+
+QLabel[class="linkAccent"],
+QLabel[class="linkPrimary"] {
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+}
+
+QLabel[class="linkAccent"] { color: @ACCENT; }
+QLabel[class="linkPrimary"] { color: @TEXT_PRIMARY; }
+
+QLabel#appLoadingLabel,
+QLabel#appErrorLabel,
+QLabel#networkDevicesStatus,
+QLabel#toolDescription,
+QLabel#appStatusLabel,
+QLabel#appInstallStatus,
+QLabel#appInstallPathLabel {
+    color: @TEXT_SECONDARY;
+}
+
+QLabel#appInstallStatus {
+    border-radius: @CARD_RADIUS_SMALLpx;
+    background: @STATUS_BG;
+    padding: @SPACING_SMpx;
+}
+
+QLabel#appInstallStatus[state="error"] {
+    color: @DANGER;
+    background: @DANGER_SOFT;
+}
+
+QLabel#appInstallStatus[state="success"] {
+    color: @SUCCESS;
+}
+
+
+QWidget#appCard:hover,
+QWidget#toolboxCard:hover,
+QWidget#networkDeviceCard:hover,
+QWidget#sponsorCard:hover {
+    border-color: @BORDER_STRONG;
+}
+
+QWidget#toolboxCard[state="disabled"] {
+    border-color: @BORDER_SUBTLE;
+    color: @TEXT_SECONDARY;
+}

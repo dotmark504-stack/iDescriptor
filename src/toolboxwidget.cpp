@@ -32,6 +32,7 @@
 #include "querymobilegestaltwidget.h"
 #include "virtuallocationwidget.h"
 #include "wirelessgalleryimportwidget.h"
+#include "ui/theme/theme.h"
 #include <QApplication>
 #include <QDebug>
 #include <QMessageBox>
@@ -120,9 +121,7 @@ void ToolboxWidget::setupUI()
     m_scrollArea = new QScrollArea();
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_scrollArea->setStyleSheet(
-        "QScrollArea { background: transparent; border: none; }");
-    m_scrollArea->viewport()->setStyleSheet("background: transparent;");
+    m_scrollArea->setObjectName("transparentScrollArea");
 
     m_contentWidget = new QWidget();
     QVBoxLayout *contentLayout = new QVBoxLayout(m_contentWidget);
@@ -131,8 +130,7 @@ void ToolboxWidget::setupUI()
 
     // Main Tools Section
     QLabel *mainToolsLabel = new QLabel("Tools");
-    mainToolsLabel->setStyleSheet(
-        "font-weight: bold; font-size: 14px; margin-left: 10px");
+    mainToolsLabel->setProperty("class", "headingMd");
     contentLayout->addWidget(mainToolsLabel);
 
     QWidget *mainToolsWidget = new QWidget();
@@ -179,8 +177,7 @@ void ToolboxWidget::setupUI()
 
     // More Tools Section
     QLabel *moreToolsLabel = new QLabel("More Tools");
-    moreToolsLabel->setStyleSheet(
-        "font-weight: bold; font-size: 14px; margin-left: 10px");
+    moreToolsLabel->setProperty("class", "headingMd");
     contentLayout->addWidget(moreToolsLabel);
 
     QWidget *moreToolsWidget = new QWidget();
@@ -222,7 +219,7 @@ ClickableWidget *ToolboxWidget::createToolbox(iDescriptorTool tool,
                                               bool requiresDevice)
 {
     ClickableWidget *b = new ClickableWidget();
-    b->setStyleSheet("padding: 5px; border: none; outline: none;");
+    b->setObjectName("toolboxCard");
 
     QVBoxLayout *layout = new QVBoxLayout(b);
 
@@ -303,8 +300,9 @@ ClickableWidget *ToolboxWidget::createToolbox(iDescriptorTool tool,
     QLabel *descLabel = new QLabel(description);
     descLabel->setWordWrap(true);
     descLabel->setAlignment(Qt::AlignCenter);
-    descLabel->setStyleSheet("color: #666; font-size: 12px;");
-    icon->setIconSizeMultiplier(1.90);
+    descLabel->setObjectName("toolDescription");
+    descLabel->setProperty("class", "caption");
+    icon->setIconSizeMultiplier(1.75);
 
     layout->addWidget(icon, 0, Qt::AlignCenter);
     layout->addWidget(titleLabel);
@@ -361,14 +359,9 @@ void ToolboxWidget::updateToolboxStates()
         bool enabled = !requiresDevice || hasDevice;
         toolbox->setEnabled(enabled);
 
-        if (enabled) {
-            toolbox->setStyleSheet("#toolboxFrame { "
-                                   "border-radius: 5px; padding: 5px; }");
-        } else {
-            toolbox->setStyleSheet("#toolboxFrame { border-radius: 5px; "
-                                   "padding: 5px;"
-                                   "opacity: 0.45;  }");
-        }
+        toolbox->setProperty("state", enabled ? "enabled" : "disabled");
+        toolbox->style()->unpolish(toolbox);
+        toolbox->style()->polish(toolbox);
     }
 }
 

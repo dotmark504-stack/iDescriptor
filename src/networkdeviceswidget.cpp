@@ -18,6 +18,7 @@
  */
 
 #include "networkdeviceswidget.h"
+#include "ui/theme/theme.h"
 
 #ifdef __linux__
 #include "core/services/avahi/avahi_service.h"
@@ -73,6 +74,7 @@ void NetworkDevicesWidget::setupUI()
 
     // Status label
     m_statusLabel = new QLabel("Scanning for network devices...");
+    m_statusLabel->setObjectName("networkDevicesStatus");
     QFont statusFont = m_statusLabel->font();
     statusFont.setPointSize(12);
     statusFont.setWeight(QFont::Medium);
@@ -98,8 +100,7 @@ void NetworkDevicesWidget::setupUI()
     m_scrollArea->setMaximumHeight(400);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_scrollArea->setStyleSheet(
-        "QScrollArea { background: transparent; border: none; }");
+    m_scrollArea->setObjectName("transparentScrollArea");
 
     // Scroll content
     m_scrollContent = new QWidget();
@@ -119,6 +120,7 @@ void NetworkDevicesWidget::createDeviceCard(const NetworkDevice &device)
 {
     // Main card frame
     QWidget *card = new QWidget();
+    card->setObjectName("networkDeviceCard");
 
     QVBoxLayout *cardLayout = new QVBoxLayout(card);
     cardLayout->setContentsMargins(12, 10, 12, 10);
@@ -169,12 +171,14 @@ void NetworkDevicesWidget::createDeviceCard(const NetworkDevice &device)
     statusIndicator->setFont(statusFont);
     QPalette statusPalette = statusIndicator->palette();
     statusPalette.setColor(QPalette::WindowText,
-                           QColor(52, 199, 89)); // iOS green
+                           palette().color(QPalette::Highlight));
     statusIndicator->setPalette(statusPalette);
 
     infoLayout->addWidget(statusIndicator);
 
     QPushButton *connectButton = new QPushButton("Connect");
+    connectButton->setProperty("class", "btnAccent");
+    connectButton->setFixedHeight(UiTheme::Tokens::ButtonHeight);
     connectButton->setCursor(Qt::PointingHandCursor);
     connect(connectButton, &QPushButton::clicked, this,
             [this, device]() { connectNetworkDevice(device); });

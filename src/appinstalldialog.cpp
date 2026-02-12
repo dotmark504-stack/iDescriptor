@@ -21,6 +21,7 @@
 #include "appcontext.h"
 #include "appdownloadbasedialog.h"
 #include "iDescriptor.h"
+#include "ui/theme/theme.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QDir>
@@ -34,6 +35,7 @@
 #include <QPainterPath>
 #include <QPushButton>
 #include <QTemporaryDir>
+#include <QStyle>
 #include <QVBoxLayout>
 #include <QtConcurrent/QtConcurrent>
 
@@ -84,12 +86,12 @@ AppInstallDialog::AppInstallDialog(const QString &appName,
 
     QVBoxLayout *detailsLayout = new QVBoxLayout();
     QLabel *nameLabel = new QLabel(appName);
-    nameLabel->setStyleSheet("font-size: 20px; font-weight: bold;");
+    nameLabel->setProperty("class", "headingLg");
     detailsLayout->addWidget(nameLabel);
 
     QLabel *descLabel = new QLabel(description);
     descLabel->setWordWrap(true);
-    descLabel->setStyleSheet("font-size: 14px;");
+    descLabel->setProperty("class", "bodySecondary");
     detailsLayout->addWidget(descLabel);
 
     appInfoLayout->addLayout(detailsLayout);
@@ -97,14 +99,16 @@ AppInstallDialog::AppInstallDialog(const QString &appName,
     layout->insertLayout(0, appInfoLayout);
 
     m_modeLabel = new QLabel("Install source:");
-    m_modeLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
+    m_modeLabel->setProperty("class", "headingMd");
     layout->insertWidget(1, m_modeLabel);
 
     QHBoxLayout *modeButtonsLayout = new QHBoxLayout();
     m_storeModeButton = new QPushButton("Install from App Store");
     m_storeModeButton->setCheckable(true);
+    m_storeModeButton->setProperty("class", "btnAccent");
     m_localModeButton = new QPushButton("Install local IPA file");
     m_localModeButton->setCheckable(true);
+    m_localModeButton->setProperty("class", "btnSubtle");
     modeButtonsLayout->addWidget(m_storeModeButton);
     modeButtonsLayout->addWidget(m_localModeButton);
     layout->insertLayout(2, modeButtonsLayout);
@@ -115,41 +119,44 @@ AppInstallDialog::AppInstallDialog(const QString &appName,
             &AppInstallDialog::onModeChanged);
 
     m_chooseIpaButton = new QPushButton("Choose IPA file...");
+    m_chooseIpaButton->setProperty("class", "btnSubtle");
     connect(m_chooseIpaButton, &QPushButton::clicked, this,
             &AppInstallDialog::onChooseIpaClicked);
     layout->insertWidget(3, m_chooseIpaButton);
 
     m_localPathLabel = new QLabel("No IPA file selected");
     m_localPathLabel->setWordWrap(true);
-    m_localPathLabel->setStyleSheet("font-size: 12px; color: #666;");
+    m_localPathLabel->setObjectName("appInstallPathLabel");
+    m_localPathLabel->setProperty("class", "caption");
     layout->insertWidget(4, m_localPathLabel);
 
     QLabel *deviceLabel = new QLabel("Choose Device:");
-    deviceLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
+    deviceLabel->setProperty("class", "headingMd");
     layout->insertWidget(5, deviceLabel);
 
     m_deviceCombo = new QComboBox();
     layout->insertWidget(6, m_deviceCombo);
 
     m_statusLabel = new QLabel("Ready to install");
-    m_statusLabel->setStyleSheet("font-size: 14px; padding: 5px;");
+    m_statusLabel->setObjectName("appInstallStatus");
+    m_statusLabel->setProperty("class", "bodySecondary");
+    m_statusLabel->setProperty("state", "neutral");
     m_statusLabel->setAlignment(Qt::AlignCenter);
     layout->insertWidget(7, m_statusLabel);
 
     layout->addStretch();
 
     m_actionButton = new QPushButton("Install");
-    m_actionButton->setFixedHeight(40);
+    m_actionButton->setProperty("class", "btnAccent");
+    m_actionButton->setFixedHeight(UiTheme::Tokens::ButtonHeightLarge);
 
     connect(m_actionButton, &QPushButton::clicked, this,
             &AppInstallDialog::onInstallClicked);
     layout->addWidget(m_actionButton);
 
     QPushButton *cancelButton = new QPushButton("Cancel");
-    cancelButton->setFixedHeight(40);
-    cancelButton->setStyleSheet(
-        "background-color: #f0f0f0; color: #333; border: 1px solid #ddd; "
-        "border-radius: 6px; font-size: 16px;");
+    cancelButton->setFixedHeight(UiTheme::Tokens::ButtonHeightLarge);
+    cancelButton->setProperty("class", "btnSubtle");
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
     layout->addWidget(cancelButton);
 
@@ -248,12 +255,9 @@ void AppInstallDialog::setStatusMessage(const QString &message, bool isError)
         return;
     }
 
-    if (isError) {
-        m_statusLabel->setStyleSheet(
-            "font-size: 14px; color: #FF3B30; padding: 5px;");
-    } else {
-        m_statusLabel->setStyleSheet("font-size: 14px; padding: 5px;");
-    }
+    m_statusLabel->setProperty("state", isError ? "error" : "neutral");
+    m_statusLabel->style()->unpolish(m_statusLabel);
+    m_statusLabel->style()->polish(m_statusLabel);
     m_statusLabel->setText(message);
 }
 
@@ -304,8 +308,9 @@ void AppInstallDialog::performInstallation(const QString &ipaPath,
 
         if (result == 0) {
             setStatusMessage("Installation completed successfully!");
-            m_statusLabel->setStyleSheet(
-                "font-size: 14px; color: #34C759; padding: 5px;");
+            m_statusLabel->setProperty("state", "success");
+            m_statusLabel->style()->unpolish(m_statusLabel);
+            m_statusLabel->style()->polish(m_statusLabel);
             QMessageBox::information(this, "Success",
                                      m_installMode == InstallMode::AppStore
                                          ? "App downloaded and installed "

@@ -22,6 +22,7 @@
 
 #include "appstoremanager.h"
 #include "iDescriptor-ui.h"
+#include "ui/theme/theme.h"
 #include "qprocessindicator.h"
 #include <QAction>
 #include <QComboBox>
@@ -148,7 +149,7 @@ protected:
         if (event->type() == QEvent::PaletteChange) {
             if (m_searchAction && !m_searchIcon.isNull()) {
                 m_searchAction->setIcon(
-                    m_searchIcon.getThemedPixmap(QSize(16, 16), palette()));
+                    m_searchIcon.getThemedPixmap(QSize(UiTheme::Tokens::IconSmall, UiTheme::Tokens::IconSmall), palette()));
             }
         }
         QWidget::changeEvent(event);
