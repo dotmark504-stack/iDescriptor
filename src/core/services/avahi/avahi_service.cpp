@@ -22,6 +22,34 @@
 #include <QMutexLocker>
 #include <avahi-common/error.h>
 #include <avahi-common/malloc.h>
+#include <QStringList>
+
+
+static QString txtValue(const std::map<std::string, std::string> &txt,
+                        const char *key)
+{
+    auto it = txt.find(key);
+    if (it == txt.end())
+        return {};
+    return QString::fromStdString(it->second);
+}
+
+static QString stableIdentifierFromAvahiDevice(const NetworkDevice &device)
+{
+    const QString udid = txtValue(device.txt, "UniqueDeviceID");
+    if (!udid.isEmpty())
+        return udid;
+
+    const QString altUdid = txtValue(device.txt, "UDID");
+    if (!altUdid.isEmpty())
+        return altUdid;
+
+    const QString rid = txtValue(device.txt, "RID");
+    if (!rid.isEmpty())
+        return rid;
+
+    return {};
+}
 
 AvahiService::AvahiService(QObject *parent)
     : QObject(parent), m_simplePoll(nullptr), m_client(nullptr),
@@ -157,15 +185,24 @@ void AvahiService::browseCallback(AvahiServiceBrowser *browser,
 
     case AVAHI_BROWSER_REMOVE:
         qDebug() << "Apple device removed:" << name;
-        emit service->deviceRemoved(QString::fromUtf8(name));
 
         // Remove from our list
         {
             QMutexLocker locker(&service->m_devicesMutex);
+            const QString serviceId = QString::fromUtf8(name);
+            QString stableId = serviceId;
+            for (const NetworkDevice &dev : service->m_networkDevices) {
+                if (dev.serviceIdentifier == serviceId || dev.name == serviceId) {
+                    stableId = dev.udid.isEmpty() ? serviceId : dev.udid;
+                    break;
+                }
+            }
             service->m_networkDevices.removeIf(
-                [name](const NetworkDevice &dev) {
-                    return dev.name == QString::fromUtf8(name);
+                [serviceId](const NetworkDevice &dev) {
+                    return dev.serviceIdentifier == serviceId ||
+                           dev.name == serviceId;
                 });
+            emit service->deviceRemoved(stableId);
         }
         break;
 
@@ -195,6 +232,7 @@ void AvahiService::resolveCallback(
 
     if (event == AVAHI_RESOLVER_FOUND) {
         NetworkDevice device;
+        device.serviceIdentifier = QString::fromUtf8(name);
         device.name = QString::fromUtf8(name);
         device.hostname = QString::fromUtf8(host_name);
         device.port = port > 0 ? port : 22; // Default to SSH port
@@ -218,7 +256,13 @@ void AvahiService::resolveCallback(
             }
         }
 
-        qDebug() << "Resolved Apple device:" << device.name << "at"
+        device.udid = stableIdentifierFromAvahiDevice(device);
+        if (device.udid.isEmpty()) {
+            device.udid = device.hostname;
+        }
+
+        qDebug() << "Resolved Apple device:" << device.name << "udid:" << device.udid
+                 << "at"
                  << device.address << ":" << device.port;
 
         // Add to our list if not already present

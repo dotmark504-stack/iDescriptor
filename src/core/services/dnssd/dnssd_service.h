@@ -83,7 +83,9 @@ private:
 
     // Temporary storage for devices being resolved
     struct PendingDevice {
+        QString serviceIdentifier;
         QString name;
+        QString udid;
         QString hostname;
         uint16_t port;
         uint32_t interfaceIndex;

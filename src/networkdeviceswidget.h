@@ -41,6 +41,9 @@ public:
     explicit NetworkDevicesWidget(QWidget *parent = nullptr);
     ~NetworkDevicesWidget();
 
+signals:
+    void connectDeviceRequested(const NetworkDevice &device);
+
 private slots:
     void onWirelessDeviceAdded(const NetworkDevice &device);
     void onWirelessDeviceRemoved(const QString &deviceName);
@@ -48,6 +51,7 @@ private slots:
 private:
     void setupUI();
     void createDeviceCard(const NetworkDevice &device);
+    void connectNetworkDevice(const NetworkDevice &device);
     void clearDeviceCards();
     void updateDeviceList();
 

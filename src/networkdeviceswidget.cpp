@@ -30,6 +30,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPalette>
+#include <QPushButton>
 
 NetworkDevicesWidget::NetworkDevicesWidget(QWidget *parent) : QWidget(parent)
 {
@@ -173,12 +174,21 @@ void NetworkDevicesWidget::createDeviceCard(const NetworkDevice &device)
 
     infoLayout->addWidget(statusIndicator);
 
+    QPushButton *connectButton = new QPushButton("Connect");
+    connectButton->setCursor(Qt::PointingHandCursor);
+    connect(connectButton, &QPushButton::clicked, this,
+            [this, device]() { connectNetworkDevice(device); });
+
     cardLayout->addWidget(nameLabel);
     cardLayout->addWidget(infoContainer);
+    cardLayout->addWidget(connectButton, 0, Qt::AlignRight);
 
     // Store the device info as property for later removal
     card->setProperty("deviceName", device.name);
     card->setProperty("deviceAddress", device.address);
+    card->setProperty("deviceHost", device.hostname);
+    card->setProperty("deviceUdid", device.udid);
+    card->setProperty("deviceServiceIdentifier", device.serviceIdentifier);
 
     // Insert before the stretch
     m_deviceLayout->insertWidget(m_deviceLayout->count() - 1, card);
@@ -221,12 +231,14 @@ void NetworkDevicesWidget::onWirelessDeviceAdded(const NetworkDevice &device)
         QString("Found %1 network device(s)").arg(deviceCount));
 }
 
-void NetworkDevicesWidget::onWirelessDeviceRemoved(const QString &deviceName)
+void NetworkDevicesWidget::onWirelessDeviceRemoved(const QString &deviceIdentifier)
 {
     // Find and remove the corresponding card
     for (int i = 0; i < m_deviceCards.count(); ++i) {
         QWidget *card = m_deviceCards[i];
-        if (card->property("deviceName").toString() == deviceName) {
+        if (card->property("deviceUdid").toString() == deviceIdentifier ||
+            card->property("deviceServiceIdentifier").toString() == deviceIdentifier ||
+            card->property("deviceName").toString() == deviceIdentifier) {
             m_deviceCards.removeAt(i);
             card->deleteLater();
             break;
@@ -241,4 +253,8 @@ void NetworkDevicesWidget::onWirelessDeviceRemoved(const QString &deviceName)
         m_statusLabel->setText(
             QString("Found %1 network device(s)").arg(deviceCount));
     }
+}
+void NetworkDevicesWidget::connectNetworkDevice(const NetworkDevice &device)
+{
+    emit connectDeviceRequested(device);
 }

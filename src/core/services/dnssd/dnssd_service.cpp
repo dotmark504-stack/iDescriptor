@@ -21,6 +21,7 @@
 #include <QDebug>
 #include <QMutexLocker>
 #include <cstring>
+#include <QStringList>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -31,6 +32,18 @@
 #include <sys/select.h>
 #include <unistd.h>
 #endif
+
+
+static QString firstTxt(const QMap<QString, QString> &txt,
+                        std::initializer_list<const char *> keys)
+{
+    for (const char *key : keys) {
+        const QString qk = QString::fromUtf8(key);
+        if (txt.contains(qk) && !txt[qk].isEmpty())
+            return txt[qk];
+    }
+    return {};
+}
 
 DnssdService::DnssdService(QObject *parent)
     : QObject(parent), m_browseRef(nullptr), m_socketNotifier(nullptr),
@@ -141,15 +154,23 @@ void DNSSD_API DnssdService::browseCallback(
         }
     } else {
         qDebug() << "Apple device removed:" << serviceName;
-        emit service->deviceRemoved(QString::fromUtf8(serviceName));
 
         // Remove from our list
         QMutexLocker locker(&service->m_devicesMutex);
+        const QString serviceId = QString::fromUtf8(serviceName);
+        QString stableId = serviceId;
+        for (const NetworkDevice &dev : service->m_networkDevices) {
+            if (dev.serviceIdentifier == serviceId || dev.name == serviceId) {
+                stableId = dev.udid.isEmpty() ? serviceId : dev.udid;
+                break;
+            }
+        }
         service->m_networkDevices.removeIf(
-            [serviceName](const NetworkDevice &dev) {
-                return dev.name == QString::fromUtf8(serviceName);
+            [serviceId](const NetworkDevice &dev) {
+                return dev.serviceIdentifier == serviceId || dev.name == serviceId;
             });
-        service->m_pendingDevices.remove(QString::fromUtf8(serviceName));
+        service->m_pendingDevices.remove(serviceId);
+        emit service->deviceRemoved(stableId);
     }
 }
 
@@ -170,6 +191,7 @@ void DNSSD_API DnssdService::resolveCallback(
 
     // Store pending device info
     PendingDevice pending;
+    pending.serviceIdentifier = serviceName;
     pending.name = serviceName;
     pending.hostname = QString::fromUtf8(hosttarget);
     pending.port = ntohs(port);
@@ -195,6 +217,12 @@ void DNSSD_API DnssdService::resolveCallback(
             }
             ptr += len;
         }
+    }
+
+    pending.udid = firstTxt(pending.txt, {"UniqueDeviceID", "UDID", "RID"});
+    const QString txtFriendlyName = firstTxt(pending.txt, {"DvNm", "Name"});
+    if (!txtFriendlyName.isEmpty()) {
+        pending.name = txtFriendlyName;
     }
 
     service->m_pendingDevices[serviceName] = pending;
@@ -272,24 +300,23 @@ void DNSSD_API DnssdService::addrInfoCallback(
         qDebug() << "friendly name:" << friendlyName;
     }
 
-    // Try to get device name from TXT records first
-    if (pending.txt.contains("DvNm")) {
-        device.name = pending.txt["DvNm"];
-        qDebug() << "Device name from DvNm TXT record:" << device.name;
-    } else if (pending.txt.contains("Name")) {
-        device.name = pending.txt["Name"];
-        qDebug() << "Device name from Name TXT record:" << device.name;
+    if (!pending.name.isEmpty() && pending.name != pending.serviceIdentifier) {
+        device.name = pending.name;
     } else {
-        // Use the cleaned hostname as fallback
         qDebug() << "Using hostname as device name:" << friendlyName;
         device.name = friendlyName;
     }
 
+    device.serviceIdentifier = pending.serviceIdentifier;
+    device.udid = pending.udid.isEmpty() ? pending.hostname : pending.udid;
     device.hostname = pending.hostname;
     device.address = QString::fromUtf8(ip);
     device.port = pending.port > 0 ? pending.port : 22; // Default to SSH port
+    for (auto it = pending.txt.constBegin(); it != pending.txt.constEnd(); ++it) {
+        device.txt[it.key().toStdString()] = it.value().toStdString();
+    }
 
-    qDebug() << "Resolved IP for Apple device:" << device.name << "at"
+    qDebug() << "Resolved IP for Apple device:" << device.name << "udid:" << device.udid << "at"
              << device.address << ":" << device.port;
 
     // Add to our list if not already present

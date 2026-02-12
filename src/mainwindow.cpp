@@ -226,6 +226,21 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "Subscribed to recovery device events successfully.";
 #endif
 
+#ifdef __linux__
+    m_networkProvider = new AvahiService(this);
+    connect(m_networkProvider, &AvahiService::deviceAdded, this,
+            &MainWindow::onNetworkDeviceAdded);
+    connect(m_networkProvider, &AvahiService::deviceRemoved, this,
+            &MainWindow::onNetworkDeviceRemoved);
+#else
+    m_networkProvider = new DnssdService(this);
+    connect(m_networkProvider, &DnssdService::deviceAdded, this,
+            &MainWindow::onNetworkDeviceAdded);
+    connect(m_networkProvider, &DnssdService::deviceRemoved, this,
+            &MainWindow::onNetworkDeviceRemoved);
+#endif
+    m_networkProvider->startBrowsing();
+
     idevice_error_t res = idevice_event_subscribe(handleCallback, nullptr);
     if (res != IDEVICE_E_SUCCESS) {
         qDebug() << "ERROR: Unable to subscribe to device events. Error code:"
@@ -368,6 +383,8 @@ void MainWindow::updateNoDevicesConnected()
 
 MainWindow::~MainWindow()
 {
+    if (m_networkProvider)
+        m_networkProvider->stopBrowsing();
     idevice_event_unsubscribe();
 #ifdef ENABLE_RECOVERY_DEVICE_SUPPORT
     irecv_device_event_unsubscribe(context);
@@ -375,4 +392,24 @@ MainWindow::~MainWindow()
     delete ui;
     delete m_updater;
     sleep(2);
+}
+
+void MainWindow::onNetworkDeviceAdded(const NetworkDevice &device)
+{
+    if (device.udid.isEmpty()) {
+        qWarning() << "Skipping network device without stable identifier"
+                   << device.name;
+        return;
+    }
+
+    AppContext::sharedInstance()->addDevice(
+        device.udid, static_cast<idevice_connection_type>(2), AddType::Regular);
+}
+
+void MainWindow::onNetworkDeviceRemoved(const QString &deviceIdentifier)
+{
+    if (deviceIdentifier.isEmpty())
+        return;
+
+    AppContext::sharedInstance()->removeDevice(deviceIdentifier);
 }
