@@ -97,6 +97,7 @@ void AppsWidget::setupUI()
     m_statusLabel->setStyleSheet("margin-right: 20px;");
 
     m_loginButton = new QPushButton();
+    m_installLocalIpaButton = new QPushButton("Install Local IPA");
     m_searchEdit = new ZLineEdit();
     m_searchEdit->setMaximumWidth(350);
 
@@ -118,6 +119,7 @@ void AppsWidget::setupUI()
     headerLayout->addWidget(m_searchEdit);
     headerLayout->addStretch();
     headerLayout->addWidget(m_statusLabel);
+    headerLayout->addWidget(m_installLocalIpaButton);
     headerLayout->addWidget(m_loginButton);
 
     // Stacked widget for different pages
@@ -133,6 +135,8 @@ void AppsWidget::setupUI()
     // Connections
     connect(m_loginButton, &QPushButton::clicked, this,
             &AppsWidget::onLoginClicked);
+    connect(m_installLocalIpaButton, &QPushButton::clicked, this,
+            &AppsWidget::onInstallLocalIpaClicked);
     connect(m_searchEdit, &QLineEdit::textChanged, this,
             &AppsWidget::onSearchTextChanged);
     m_debounceTimer->setSingleShot(true);
@@ -266,6 +270,10 @@ void AppsWidget::onAppStoreInitialized(const QJsonObject &accountInfo)
         "background-color: #007AFF; color: white; border: none; "
         "border-radius: "
         "4px; padding: 8px 16px; font-size: 14px;");
+    m_installLocalIpaButton->setStyleSheet(
+        "background-color: #34C759; color: white; border: none; border-radius: "
+        "4px; padding: 8px 16px; font-size: 14px;");
+    m_installLocalIpaButton->setToolTip("Install a local .ipa file on a connected device");
     m_searchEdit->setPlaceholderText(m_isLoggedIn ? "Search for apps..."
                                                   : "Sign in to search");
 }
@@ -736,7 +744,18 @@ void AppsWidget::onAppCardClicked(const QString &appName,
         return;
     }
 
-    AppInstallDialog dialog(appName, description, bundleId, this);
+    AppInstallDialog dialog(appName, description, bundleId,
+                            AppInstallDialog::InstallMode::AppStore, this);
+    dialog.exec();
+}
+
+
+void AppsWidget::onInstallLocalIpaClicked()
+{
+    AppInstallDialog dialog("Local IPA",
+                            "Install an IPA file from your computer",
+                            QString(),
+                            AppInstallDialog::InstallMode::LocalFile, this);
     dialog.exec();
 }
 

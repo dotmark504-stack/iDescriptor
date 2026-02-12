@@ -25,16 +25,19 @@
 #include <QDialog>
 #include <QFutureWatcher>
 #include <QLabel>
-#include <QTemporaryDir>
 #include <QNetworkAccessManager>
+#include <QTemporaryDir>
 
 class AppInstallDialog : public AppDownloadBaseDialog
 {
     Q_OBJECT
 public:
+    enum class InstallMode { AppStore, LocalFile };
+
     explicit AppInstallDialog(const QString &appName,
                               const QString &description,
                               const QString &bundleId,
+                              InstallMode mode = InstallMode::AppStore,
                               QWidget *parent = nullptr);
     ~AppInstallDialog();
 
@@ -43,14 +46,27 @@ protected:
 
 private slots:
     void onInstallClicked();
+    void onModeChanged();
+    void onChooseIpaClicked();
 
 private:
+    bool validateInstallationInputs(QString *errorText = nullptr) const;
+    bool hasValidDeviceSelection() const;
+    void setStatusMessage(const QString &message, bool isError = false);
+
     QComboBox *m_deviceCombo;
     QString m_bundleId;
     QLabel *m_statusLabel;
+    QLabel *m_modeLabel;
+    QLabel *m_localPathLabel;
+    QPushButton *m_storeModeButton;
+    QPushButton *m_localModeButton;
+    QPushButton *m_chooseIpaButton;
     QFutureWatcher<int> *m_installWatcher;
     QTemporaryDir *m_tempDir = nullptr;
     QNetworkAccessManager *m_manager = nullptr;
+    InstallMode m_installMode;
+    QString m_selectedIpaPath;
     void updateDeviceList();
     void performInstallation(const QString &ipaPath, const QString &deviceUdid);
 };

@@ -24,6 +24,8 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFutureWatcher>
 #include <QLabel>
 #include <QMessageBox>
@@ -37,9 +39,13 @@
 
 AppInstallDialog::AppInstallDialog(const QString &appName,
                                    const QString &description,
-                                   const QString &bundleId, QWidget *parent)
+                                   const QString &bundleId,
+                                   InstallMode mode, QWidget *parent)
     : AppDownloadBaseDialog(appName, bundleId, parent), m_bundleId(bundleId),
-      m_statusLabel(nullptr), m_installWatcher(nullptr)
+      m_statusLabel(nullptr), m_modeLabel(nullptr), m_localPathLabel(nullptr),
+      m_storeModeButton(nullptr), m_localModeButton(nullptr),
+      m_chooseIpaButton(nullptr), m_installWatcher(nullptr),
+      m_installMode(mode)
 {
     setWindowTitle("Install " + appName + " - iDescriptor");
     setModal(true);
@@ -90,17 +96,45 @@ AppInstallDialog::AppInstallDialog(const QString &appName,
     appInfoLayout->addStretch();
     layout->insertLayout(0, appInfoLayout);
 
+    m_modeLabel = new QLabel("Install source:");
+    m_modeLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
+    layout->insertWidget(1, m_modeLabel);
+
+    QHBoxLayout *modeButtonsLayout = new QHBoxLayout();
+    m_storeModeButton = new QPushButton("Install from App Store");
+    m_storeModeButton->setCheckable(true);
+    m_localModeButton = new QPushButton("Install local IPA file");
+    m_localModeButton->setCheckable(true);
+    modeButtonsLayout->addWidget(m_storeModeButton);
+    modeButtonsLayout->addWidget(m_localModeButton);
+    layout->insertLayout(2, modeButtonsLayout);
+
+    connect(m_storeModeButton, &QPushButton::clicked, this,
+            &AppInstallDialog::onModeChanged);
+    connect(m_localModeButton, &QPushButton::clicked, this,
+            &AppInstallDialog::onModeChanged);
+
+    m_chooseIpaButton = new QPushButton("Choose IPA file...");
+    connect(m_chooseIpaButton, &QPushButton::clicked, this,
+            &AppInstallDialog::onChooseIpaClicked);
+    layout->insertWidget(3, m_chooseIpaButton);
+
+    m_localPathLabel = new QLabel("No IPA file selected");
+    m_localPathLabel->setWordWrap(true);
+    m_localPathLabel->setStyleSheet("font-size: 12px; color: #666;");
+    layout->insertWidget(4, m_localPathLabel);
+
     QLabel *deviceLabel = new QLabel("Choose Device:");
     deviceLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
-    layout->insertWidget(1, deviceLabel);
+    layout->insertWidget(5, deviceLabel);
 
     m_deviceCombo = new QComboBox();
-    layout->insertWidget(2, m_deviceCombo);
+    layout->insertWidget(6, m_deviceCombo);
 
     m_statusLabel = new QLabel("Ready to install");
     m_statusLabel->setStyleSheet("font-size: 14px; padding: 5px;");
     m_statusLabel->setAlignment(Qt::AlignCenter);
-    layout->insertWidget(3, m_statusLabel);
+    layout->insertWidget(7, m_statusLabel);
 
     layout->addStretch();
 
@@ -123,6 +157,7 @@ AppInstallDialog::AppInstallDialog(const QString &appName,
             &AppInstallDialog::updateDeviceList);
 
     updateDeviceList();
+    onModeChanged();
 }
 
 void AppInstallDialog::updateDeviceList()
@@ -134,7 +169,7 @@ void AppInstallDialog::updateDeviceList()
         m_deviceCombo->setEnabled(false);
         m_actionButton->setDefault(false);
         m_actionButton->setEnabled(false);
-        m_statusLabel->setText("No devices connected");
+        setStatusMessage("No devices connected", true);
     } else {
         m_deviceCombo->setEnabled(true);
         for (const auto &device : devices) {
@@ -146,14 +181,119 @@ void AppInstallDialog::updateDeviceList()
         }
         m_actionButton->setDefault(true);
         m_actionButton->setEnabled(true);
-        m_statusLabel->setText("Ready to install");
+        setStatusMessage(m_installMode == InstallMode::AppStore
+                             ? "Ready to download from App Store"
+                             : "Ready to install local IPA");
     }
+}
+
+bool AppInstallDialog::hasValidDeviceSelection() const
+{
+    if (!m_deviceCombo->isEnabled()) {
+        return false;
+    }
+
+    const QString selectedDevice = m_deviceCombo->currentData().toString();
+    return !selectedDevice.isEmpty();
+}
+
+bool AppInstallDialog::validateInstallationInputs(QString *errorText) const
+{
+    if (!hasValidDeviceSelection()) {
+        if (errorText) {
+            *errorText = "Please select a connected device before installing.";
+        }
+        return false;
+    }
+
+    if (m_installMode == InstallMode::LocalFile) {
+        if (m_selectedIpaPath.trimmed().isEmpty()) {
+            if (errorText) {
+                *errorText = "Please select a local IPA file first.";
+            }
+            return false;
+        }
+
+        QFileInfo ipaInfo(m_selectedIpaPath);
+        if (!ipaInfo.exists() || !ipaInfo.isFile()) {
+            if (errorText) {
+                *errorText = "The selected IPA file does not exist.";
+            }
+            return false;
+        }
+
+        if (!ipaInfo.isReadable()) {
+            if (errorText) {
+                *errorText =
+                    "The selected IPA file is not readable. Check file "
+                    "permissions.";
+            }
+            return false;
+        }
+
+        if (ipaInfo.suffix().compare("ipa", Qt::CaseInsensitive) != 0) {
+            if (errorText) {
+                *errorText = "The selected file must have a .ipa extension.";
+            }
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void AppInstallDialog::setStatusMessage(const QString &message, bool isError)
+{
+    if (!m_statusLabel) {
+        return;
+    }
+
+    if (isError) {
+        m_statusLabel->setStyleSheet(
+            "font-size: 14px; color: #FF3B30; padding: 5px;");
+    } else {
+        m_statusLabel->setStyleSheet("font-size: 14px; padding: 5px;");
+    }
+    m_statusLabel->setText(message);
+}
+
+void AppInstallDialog::onModeChanged()
+{
+    if (sender() == m_storeModeButton) {
+        m_installMode = InstallMode::AppStore;
+    } else if (sender() == m_localModeButton) {
+        m_installMode = InstallMode::LocalFile;
+    }
+
+    m_storeModeButton->setChecked(m_installMode == InstallMode::AppStore);
+    m_localModeButton->setChecked(m_installMode == InstallMode::LocalFile);
+
+    const bool isLocal = m_installMode == InstallMode::LocalFile;
+    m_chooseIpaButton->setVisible(isLocal);
+    m_localPathLabel->setVisible(isLocal);
+    setStatusMessage(isLocal ? "Ready to install local IPA"
+                             : "Ready to download from App Store");
+}
+
+void AppInstallDialog::onChooseIpaClicked()
+{
+    const QString path = QFileDialog::getOpenFileName(
+        this, "Select IPA file", QString(), "IPA files (*.ipa)");
+    if (path.isEmpty()) {
+        return;
+    }
+
+    m_selectedIpaPath = path;
+    m_localPathLabel->setText(m_selectedIpaPath);
+    setStatusMessage("Local IPA selected. Ready to install.");
 }
 
 void AppInstallDialog::performInstallation(const QString &ipaPath,
                                            const QString &deviceUdid)
 {
-    m_statusLabel->setText("Installing app...");
+    setStatusMessage(m_installMode == InstallMode::AppStore
+                         ? "Installing downloaded app..."
+                         : "Installing local IPA...");
 
     // Setup install watcher
     m_installWatcher = new QFutureWatcher<int>(this);
@@ -163,19 +303,24 @@ void AppInstallDialog::performInstallation(const QString &ipaPath,
         m_installWatcher = nullptr;
 
         if (result == 0) {
-            m_statusLabel->setText("Installation completed successfully!");
+            setStatusMessage("Installation completed successfully!");
             m_statusLabel->setStyleSheet(
                 "font-size: 14px; color: #34C759; padding: 5px;");
             QMessageBox::information(this, "Success",
-                                     "App installed successfully!");
+                                     m_installMode == InstallMode::AppStore
+                                         ? "App downloaded and installed "
+                                           "successfully!"
+                                         : "Local IPA installed successfully!");
             accept();
         } else {
-            m_statusLabel->setText("Installation failed");
-            m_statusLabel->setStyleSheet(
-                "font-size: 14px; color: #FF3B30; padding: 5px;");
+            const QString failureText =
+                m_installMode == InstallMode::AppStore
+                    ? "App Store installation failed"
+                    : "Local IPA installation failed";
+            setStatusMessage(failureText, true);
             QMessageBox::critical(
-                this, "Error",
-                QString("Installation failed with error code: %1").arg(result));
+                this, "Installation Error",
+                QString("%1 with error code: %2").arg(failureText).arg(result));
         }
     });
 
@@ -196,17 +341,24 @@ void AppInstallDialog::performInstallation(const QString &ipaPath,
 }
 void AppInstallDialog::onInstallClicked()
 {
-    if (m_deviceCombo->count() == 0) {
-        QMessageBox::warning(this, "No Device",
-                             "Please connect a device first.");
+    QString errorText;
+    if (!validateInstallationInputs(&errorText)) {
+        setStatusMessage(errorText, true);
+        QMessageBox::warning(this, "Cannot Install", errorText);
         return;
     }
 
     m_deviceCombo->setEnabled(false);
     m_actionButton->setEnabled(false);
-    m_statusLabel->setText("Downloading app...");
 
-    QString selectedDevice = m_deviceCombo->currentData().toString();
+    const QString selectedDevice = m_deviceCombo->currentData().toString();
+
+    if (m_installMode == InstallMode::LocalFile) {
+        performInstallation(m_selectedIpaPath, selectedDevice);
+        return;
+    }
+
+    setStatusMessage("Downloading app from App Store...");
 
     int buttonIndex = m_layout->indexOf(m_actionButton);
     layout()->removeWidget(m_actionButton);
@@ -220,18 +372,16 @@ void AppInstallDialog::onInstallClicked()
     // Create a new temporary directory for each installation
     m_tempDir = new QTemporaryDir();
     if (!m_tempDir->isValid()) {
-        m_statusLabel->setText("Failed to create temporary directory");
-        m_statusLabel->setStyleSheet(
-            "font-size: 14px; color: #FF3B30; padding: 5px;");
+        setStatusMessage("Failed to create temporary directory", true);
         QMessageBox::critical(
             this, "Error",
-            "Could not create temporary directory for download.");
+            "Could not create temporary directory for App Store download.");
         return;
     }
 
     startDownloadProcess(m_bundleId, m_tempDir->path(), buttonIndex, false);
     connect(this, &AppDownloadBaseDialog::downloadFinished, this,
-            [this, selectedDevice](bool success) {
+            [this, selectedDevice](bool success, const QString &) {
                 if (success) {
                     qDebug() << "Download finished, starting installation...";
                     /*
@@ -246,12 +396,10 @@ void AppInstallDialog::onInstallClicked()
                     QStringList matches =
                         outDir.entryList(filters, QDir::Files, QDir::Time);
                     if (matches.isEmpty()) {
-                        m_statusLabel->setText(
-                            "Download failed - IPA not found");
-                        m_statusLabel->setStyleSheet(
-                            "font-size: 14px; color: #FF3B30; padding: 5px;");
+                        setStatusMessage(
+                            "App Store download failed - IPA not found", true);
                         QMessageBox::critical(
-                            this, "Error",
+                            this, "Download Error",
                             QString("Downloaded IPA not found in %1")
                                 .arg(outDir.absolutePath()));
                         return;
@@ -261,9 +409,10 @@ void AppInstallDialog::onInstallClicked()
                     performInstallation(ipaFile, selectedDevice);
 
                 } else {
-                    m_statusLabel->setText("Download failed");
-                    m_statusLabel->setStyleSheet(
-                        "font-size: 14px; color: #FF3B30; padding: 5px;");
+                    setStatusMessage("App Store download failed", true);
+                    QMessageBox::critical(
+                        this, "Download Error",
+                        "Failed to download app from App Store.");
                 }
             });
 }
@@ -276,9 +425,7 @@ void AppInstallDialog::reject()
         m_installWatcher->deleteLater();
         m_installWatcher = nullptr;
         if (m_statusLabel) {
-            m_statusLabel->setText("Installation cancelled");
-            m_statusLabel->setStyleSheet(
-                "font-size: 14px; color: #FF3B30; padding: 5px;");
+            setStatusMessage("Installation cancelled", true);
         }
     }
 
