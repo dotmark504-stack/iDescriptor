@@ -180,9 +180,11 @@ pkg_check_modules(PLIST REQUIRED IMPORTED_TARGET libplist-2.0)
 
 file(GLOB PROJECT_SOURCES
 src/*.cpp
+src/ui/theme/*.cpp
 src/core/helpers/*.cpp
 src/core/services/*.cpp
 src/*.h
+src/ui/theme/*.h
 src/*.ui
 resources.qrc
 )
@@ -506,4 +508,3 @@ if(WIN32)
 endif()
 
 include(CPack)
-

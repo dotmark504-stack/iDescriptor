@@ -32,6 +32,7 @@
 #include "settingsmanager.h"
 #include "sponsorwidget.h"
 #include "zlineedit.h"
+#include "ui/theme/theme.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QDebug>
@@ -87,14 +88,14 @@ void AppsWidget::setupUI()
 
     QWidget *headerWidget = new QWidget();
     headerWidget->setFixedHeight(60);
-    headerWidget->setStyleSheet("border-bottom: 1px solid #363d32;");
+    headerWidget->setObjectName("sectionHeader");
 
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(20, 10, 20, 10);
 
     // Create status label first
     m_statusLabel = new QLabel("Not signed in");
-    m_statusLabel->setStyleSheet("margin-right: 20px;");
+    m_statusLabel->setProperty("class", "bodySecondary");
 
     m_loginButton = new QPushButton();
     m_installLocalIpaButton = new QPushButton("Install Local IPA");
@@ -104,13 +105,12 @@ void AppsWidget::setupUI()
     // --- Status and Login Button ---
     m_manager = AppStoreManager::sharedInstance();
 
-    m_statusLabel->setStyleSheet("font-size: 14px; color: #666;");
 
     mainLayout->addWidget(headerWidget);
 
     m_searchIcon = ZIcon(":/resources/icons/MdiLightMagnify.png");
     m_searchAction = m_searchEdit->addAction(
-        m_searchIcon.getThemedPixmap(QSize(16, 16), palette()),
+        m_searchIcon.getThemedPixmap(QSize(UiTheme::Tokens::IconSmall, UiTheme::Tokens::IconSmall), palette()),
         QLineEdit::TrailingPosition);
     m_searchAction->setToolTip("Search");
     connect(m_searchAction, &QAction::triggered, this,
@@ -209,11 +209,7 @@ void AppsWidget::handleInit()
         m_statusLabel->setText("Failed to initialize");
         m_loginButton->setText("Failed to initialize");
         m_loginButton->setEnabled(false);
-        m_loginButton->setStyleSheet(
-            "background-color: #ccc; color: #666; "
-            "border: "
-            "none; border-radius: "
-            "4px; padding: 8px 16px; font-size: 14px;");
+        m_loginButton->setProperty("class", "btnSubtle");
         return;
     }
     /*
@@ -266,13 +262,8 @@ void AppsWidget::onAppStoreInitialized(const QJsonObject &accountInfo)
     }
 
     m_loginButton->setText(m_isLoggedIn ? "Sign Out" : "Sign In");
-    m_loginButton->setStyleSheet(
-        "background-color: #007AFF; color: white; border: none; "
-        "border-radius: "
-        "4px; padding: 8px 16px; font-size: 14px;");
-    m_installLocalIpaButton->setStyleSheet(
-        "background-color: #34C759; color: white; border: none; border-radius: "
-        "4px; padding: 8px 16px; font-size: 14px;");
+    m_loginButton->setProperty("class", "btnAccent");
+    m_installLocalIpaButton->setProperty("class", "btnSuccess");
     m_installLocalIpaButton->setToolTip("Install a local .ipa file on a connected device");
     m_searchEdit->setPlaceholderText(m_isLoggedIn ? "Search for apps..."
                                                   : "Sign in to search");
@@ -286,9 +277,7 @@ void AppsWidget::setupDefaultAppsPage()
     m_scrollArea = new QScrollArea();
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_scrollArea->setStyleSheet(
-        "QScrollArea { background: transparent; border: none; }");
-    m_scrollArea->viewport()->setStyleSheet("background: transparent;");
+    m_scrollArea->setObjectName("transparentScrollArea");
 
     m_contentWidget = new QWidget();
     QGridLayout *gridLayout = new QGridLayout(m_contentWidget);
@@ -316,9 +305,9 @@ void AppsWidget::setupLoadingPage()
     m_loadingIndicator->setFixedSize(64, 32);
 
     m_loadingLabel = new QLabel("Loading...");
+    m_loadingLabel->setObjectName("appLoadingLabel");
+    m_loadingLabel->setProperty("class", "headingMd");
     m_loadingLabel->setAlignment(Qt::AlignCenter);
-    m_loadingLabel->setStyleSheet(
-        "font-size: 16px; color: #666; margin-top: 20px;");
 
     loadingLayout->addWidget(m_loadingIndicator, 0, Qt::AlignCenter);
     loadingLayout->addWidget(m_loadingLabel, 0, Qt::AlignCenter);
@@ -334,9 +323,10 @@ void AppsWidget::setupErrorPage()
     errorLayout->setAlignment(Qt::AlignCenter);
 
     m_errorLabel = new QLabel("Error occurred");
+    m_errorLabel->setObjectName("appErrorLabel");
+    m_errorLabel->setProperty("class", "headingMd");
     m_errorLabel->setAlignment(Qt::AlignCenter);
     m_errorLabel->setWordWrap(true);
-    m_errorLabel->setStyleSheet("font-size: 16px; color: #666;");
 
     errorLayout->addWidget(m_errorLabel, 0, Qt::AlignCenter);
 
@@ -506,7 +496,7 @@ void AppsWidget::createSponsorCard(QGridLayout *gridLayout, int row, int col)
         return;
 
     ClickableWidget *sponsorCard = new ClickableWidget();
-    sponsorCard->setStyleSheet("border: 1px solid #ddd; border-radius: 8px;");
+    sponsorCard->setObjectName("sponsorCard");
     sponsorCard->setCursor(Qt::PointingHandCursor);
     connect(sponsorCard, &ClickableWidget::clicked, this, [this]() {
         auto sWidget = new SponsorWidget();
@@ -519,7 +509,7 @@ void AppsWidget::createSponsorCard(QGridLayout *gridLayout, int row, int col)
 
     QLabel *sponsorLabel = new QLabel("Become a Sponsor!");
     sponsorLabel->setAlignment(Qt::AlignCenter);
-    sponsorLabel->setStyleSheet("font-size: 14px; font-weight: bold;");
+    sponsorLabel->setProperty("class", "headingMd");
     sponsorLayout->addWidget(sponsorLabel);
 
     gridLayout->addWidget(sponsorCard, row, col);
@@ -531,6 +521,7 @@ void AppsWidget::createAppCard(
     int row, int col, bool useBundleIdForIcon, const SponsorType &sponsorType)
 {
     QWidget *cardWidget = new QWidget();
+    cardWidget->setObjectName("appCard");
 
     QHBoxLayout *cardLayout = new QHBoxLayout(cardWidget);
     cardLayout->setContentsMargins(15, 15, 15, 15);
@@ -606,21 +597,17 @@ void AppsWidget::createAppCard(
     // App name with sponsor indicator
     QHBoxLayout *nameLayout = new QHBoxLayout();
     QLabel *nameLabel = new QLabel(name);
-    nameLabel->setStyleSheet("font-size: 16px;");
+    nameLabel->setProperty("class", "headingMd");
     nameLabel->setWordWrap(true);
     nameLayout->addWidget(nameLabel);
 
     // Add sponsor type indicator
     if (!sponsorType.isEmpty()) {
         QLabel *sponsorLabel = new QLabel(sponsorType.name);
-        sponsorLabel->setStyleSheet(QString("font-size: 10px; "
-                                            "font-weight: bold; "
-                                            "color: #333; "
-                                            "background-color: %2; "
-                                            "border-radius: 4px; "
-                                            "padding: 2px 6px; "
-                                            "margin-left: 8px;")
-                                        .arg(sponsorType.color));
+        const QColor sponsorColor(sponsorType.color);
+        sponsorLabel->setStyleSheet(QString("font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 6px; margin-left: 8px; color: %1; background-color: %2;")
+                                        .arg(UiTheme::toRgba(palette().color(QPalette::WindowText)))
+                                        .arg(UiTheme::toRgba(sponsorColor)));
         sponsorLabel->setFixedHeight(16);
         sponsorLabel->setAlignment(Qt::AlignCenter);
         nameLayout->addWidget(sponsorLabel);
@@ -631,7 +618,7 @@ void AppsWidget::createAppCard(
 
     // App description
     QLabel *descLabel = new QLabel(description);
-    descLabel->setStyleSheet("font-size: 12px; color: #666;");
+    descLabel->setProperty("class", "caption");
     descLabel->setAlignment(Qt::AlignLeft);
     descLabel->setWordWrap(true);
     textLayout->addWidget(descLabel);
@@ -644,9 +631,7 @@ void AppsWidget::createAppCard(
     if (!bundleId.isEmpty()) {
         ZLabel *installLabel = new ZLabel("Install");
         installLabel->setAlignment(Qt::AlignCenter);
-        installLabel->setStyleSheet(
-            "font-size: 12px; color: #007AFF; font-weight: "
-            "bold; background-color: transparent;");
+        installLabel->setProperty("class", "linkAccent");
         installLabel->setCursor(Qt::PointingHandCursor);
         installLabel->setFixedHeight(30);
 
@@ -660,8 +645,7 @@ void AppsWidget::createAppCard(
     if (websiteUrl.isEmpty()) {
         ZLabel *downloadIpaLabel = new ZLabel("Download IPA");
         downloadIpaLabel->setAlignment(Qt::AlignCenter);
-        downloadIpaLabel->setStyleSheet("font-size: 12px; font-weight: "
-                                        "bold; background-color: transparent;");
+        downloadIpaLabel->setProperty("class", "linkPrimary");
         downloadIpaLabel->setCursor(Qt::PointingHandCursor);
 
         connect(
@@ -671,8 +655,7 @@ void AppsWidget::createAppCard(
         buttonsLayout->addWidget(downloadIpaLabel);
     } else {
         ZLabel *websiteLabel = new ZLabel("Website");
-        websiteLabel->setStyleSheet("font-size: 12px; font-weight: "
-                                    "bold; background-color: transparent;");
+        websiteLabel->setProperty("class", "linkPrimary");
         websiteLabel->setAlignment(Qt::AlignCenter);
         websiteLabel->setCursor(Qt::PointingHandCursor);
 

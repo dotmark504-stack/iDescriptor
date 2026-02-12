@@ -19,10 +19,12 @@
 
 #include "mainwindow.h"
 #include "settingsmanager.h"
+#include "ui/theme/theme.h"
 #include <QApplication>
 #include <QDebug>
 #include <QDir>
 #include <QMessageBox>
+#include <QPalette>
 #include <QStyleFactory>
 #include <QtGlobal>
 #include <stdlib.h>
@@ -36,6 +38,9 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("iDescriptor");
     QCoreApplication::setApplicationName("iDescriptor");
     QCoreApplication::setApplicationVersion(APP_VERSION);
+    UiTheme::applyGlobalTheme(a);
+    QObject::connect(&a, &QApplication::paletteChanged, &a,
+                     [&a](const QPalette &) { UiTheme::applyGlobalTheme(a); });
 
     if (a.arguments().contains("--reset-settings")) {
         SettingsManager::sharedInstance()->clear();
