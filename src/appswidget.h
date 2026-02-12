@@ -95,6 +95,7 @@ private slots:
     void performSearch();
     void onSearchFinished(bool success, const QString &results);
     void onAppStoreInitialized(const QJsonObject &accountInfo);
+    void onInstallLocalIpaClicked();
 
 private:
     void setupUI();
@@ -123,6 +124,7 @@ private:
     QScrollArea *m_scrollArea;
     QWidget *m_contentWidget;
     QPushButton *m_loginButton;
+    QPushButton *m_installLocalIpaButton;
     QLabel *m_statusLabel;
     bool m_isLoggedIn;
     AppStoreManager *m_manager;
